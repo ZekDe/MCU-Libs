@@ -3,48 +3,56 @@
 
 #include "stdint.h"
 /*
-* Buradaki tanimlamalara göre FLASH LAYOUT asagidaki gibidir.
-Sector 0-1: STATIC (0x1F000-0x1F3FF)
-Sector 2-3: DYNAMIC wear_set=0 (0x1F400-0x1F7FF)
-Sector 4-5: DYNAMIC wear_set=1 (0x1F800-0x1FBFF)
-Sector 6-7: SYSTEM (0x1FC00-0x1FFFF)
-Toplam 4 Kb yazma alani vardir. DYNAMIC için 1 kb - 1kb döngüsel
+* M031LC2AE (32 KB APROM) - DFBA = 0x7000 (CONFIG1)
+* FLASH LAYOUT:
+*   Sector 0-1: STATIC                (DFBA + 0x000 .. DFBA + 0x3FF)
+*   Sector 2-3: DYNAMIC wear_set=0    (DFBA + 0x400 .. DFBA + 0x7FF)
+*   Sector 4-5: DYNAMIC wear_set=1    (DFBA + 0x800 .. DFBA + 0xBFF)
+*   Sector 6-7: SYSTEM                (DFBA + 0xC00 .. DFBA + 0xFFF)
+* Toplam 4 KB kullanici alani. DYNAMIC icin 1 KB - 1 KB dongusel wear leveling.
+* FLASH_USER_BASE runtime'da FMC_ReadDataFlashBaseAddr() ile alinir.
 */
-// Flash fiziksel özellikleri
-#define FLASH_END_ADDR          0x20000    // 128KB son adres
-#define FLASH_SECTOR_SIZE       0x200      // 512 bytes per sector
+// Flash fiziksel ozellikleri
+#define FLASH_USER_BASE			0x0000
+#define FLASH_END_ADDR          0x8000     // 32KB son adres (M031LC2AE)
+#define FLASH_SECTOR_SIZE       0x200      // 512 bytes per sector (M031 page size)
 #define FLASH_USER_SIZE         0x1000     // 4KB toplam alan
-#define FLASH_USER_BASE         (FLASH_END_ADDR - FLASH_USER_SIZE)
 
-// Maksimum desteklenen veri boyutu (2 sektör)
+// Maksimum desteklenen veri boyutu (2 sektï¿½r)
 #define MAX_CATEGORY_DATA_SIZE  0x400      // 1024 bytes
 
 // Statik flash layout - degismez!
 #define STATIC_SECTOR_COUNT     2   // 1KB (2x512)
-#define DYNAMIC_SECTOR_COUNT    4   // 2KB (4x512) 
+#define DYNAMIC_SECTOR_COUNT    4   // 2KB (4x512)
 #define SYSTEM_SECTOR_COUNT     2   // 1KB (2x512)
 #define DYNAMIC_WEAR_SETS      2   // 2 set alternating (her set 1KB)
 
 // Maksimum parametre sayisi
 #define MAX_PARAMS              32
 
+// Saglik uyarisi icin yazma sayisi siniri (M031 flash 100K cycle endurance)
+#define FLASH_HEALTH_THRESHOLD  100000U
+
+// Sentinel for "no next sector" in chained sector header
+#define FLASH_NEXT_SECTOR_NONE  0xFFFFFFFFU
+
 // Header yapisi
 typedef struct {
     uint32_t magic;
     uint32_t sequence;
     uint32_t write_count;
-    uint32_t data_size;     // Bu sektördeki veri boyutu
-    uint32_t next_sector;   // Sonraki sektör index (0xFF = yok)
+    uint32_t data_size;     // Bu sektï¿½rdeki veri boyutu
+    uint32_t next_sector;   // Sonraki sektï¿½r index (0xFF = yok)
     uint32_t crc32;
 } flash_header_t;
 
-#define HEADER_SIZE sizeof(flash_header_t)
-#define SECTOR_DATA_SIZE (FLASH_SECTOR_SIZE - HEADER_SIZE)
+#define HEADER_SIZE 		sizeof(flash_header_t)
+#define SECTOR_DATA_SIZE 	(FLASH_SECTOR_SIZE - HEADER_SIZE)
 
 // Kategori layout bilgisi
 typedef struct {
-    uint8_t start_sector;   // Baslangiç sektör index
-    uint8_t sector_count;   // Toplam sektör sayisi
+    uint8_t start_sector;   // Baslangiï¿½ sektï¿½r index
+    uint8_t sector_count;   // Toplam sektï¿½r sayisi
     uint8_t wear_sets;      // Wear leveling set sayisi
 } category_layout_t;
 
@@ -74,10 +82,8 @@ typedef struct {
     param_category_t category;      // Kategori
     uint32_t size;                  // Byte cinsinden boyut
     void *ram_ptr;                  // RAM'deki adres
-    uint32_t default_value;         // Varsayilan deger
     uint8_t dirty;                  // Degisti mi flag'i
     uint32_t last_change_time;      // Son degisiklik zamani
-    uint8_t sector_index;           // Hangi sektörde saklandigi
 } param_descriptor_t;
 
 // Flash config
@@ -92,9 +98,9 @@ flash_result_t flashManagerRegisterParam(const param_descriptor_t *param);
 flash_result_t flashManagerUpdate(uint32_t current_time);
 flash_result_t flashManagerSaveAll(void);
 flash_result_t flashManagerLoadAll(void);
+flash_result_t flashManagerLoadCategory(param_category_t category);
 flash_result_t flashManagerMarkDirty(uint32_t param_id);
 flash_result_t flashManagerForceWrite(uint32_t param_id);
-flash_result_t flashManagerSetDefaults(param_category_t category);
 
 // Utility Fonksiyonlari
 uint32_t flashManagerGetWriteCount(param_category_t category);
