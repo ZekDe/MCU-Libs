@@ -54,6 +54,7 @@ void timerStart(soft_timer_t *obj)
 void timerStop(soft_timer_t *obj)
 {
 	obj->in = 0;
+	obj->aux = 0;
 }
 
 /**
