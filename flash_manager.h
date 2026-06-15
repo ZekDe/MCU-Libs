@@ -43,6 +43,7 @@ typedef struct {
     uint32_t write_count;
     uint32_t data_size;     // Bu sekt�rdeki veri boyutu
     uint32_t next_sector;   // Sonraki sekt�r index (0xFF = yok)
+    uint32_t layout_id;     // Kategori parametre semasi imzasi (id+size CRC32)
     uint32_t crc32;
 } flash_header_t;
 

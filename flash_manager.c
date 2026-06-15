@@ -65,6 +65,8 @@ static flash_result_t initSequenceNumbers(void);
 static flash_result_t saveCategoryMultiSector(param_category_t category);
 static flash_result_t loadCategoryMultiSector(param_category_t category);
 static uint32_t calcCRC32(const uint8_t *data, uint32_t len);
+static uint32_t computeLayoutSignature(param_category_t category);
+static uint32_t getCategoryCapacity(param_category_t category);
 static flash_result_t flashWrite(uint32_t addr, const void *data, uint32_t size);
 static flash_result_t flashRead(uint32_t addr, void *data, uint32_t size);
 static flash_result_t flashErase(uint32_t addr);
@@ -172,19 +174,20 @@ flash_result_t flashManagerRegisterParam(const param_descriptor_t *param)
         return FLASH_ERROR_INVALID_PARAM;
     }
 
-    // Boyut ve pointer dogrulamasi
-    if (param->size == 0 || param->size > MAX_CATEGORY_DATA_SIZE || !param->ram_ptr) {
+    // Boyut ve pointer dogrulamasi (gercek kategori kapasitesine gore)
+    if (param->size == 0 || param->size > getCategoryCapacity(param->category) ||
+        !param->ram_ptr) {
         return FLASH_ERROR_INVALID_PARAM;
     }
 
-    // Ayni kategorideki toplam boyut MAX'i asmasin
+    // Ayni kategorideki toplam boyut gercek kapasiteyi asmasin
     uint32_t cat_total = param->size;
     for (uint8_t i = 0; i < mgr.param_count; i++) {
         if (mgr.params[i].category == param->category) {
             cat_total += mgr.params[i].size;
         }
     }
-    if (cat_total > MAX_CATEGORY_DATA_SIZE) {
+    if (cat_total > getCategoryCapacity(param->category)) {
         return FLASH_ERROR_NO_SPACE;
     }
 
@@ -220,13 +223,16 @@ flash_result_t flashManagerUpdate(uint32_t current_time)
     {
         param_descriptor_t *param = &mgr.params[i];
         
-        if (param->dirty && param->category == PARAM_CAT_DYNAMIC) 
+        if (param->dirty && param->category == PARAM_CAT_DYNAMIC)
         {
-            // Ilk kez dirty yapilmissa zamani kaydet
-            if (param->last_change_time == 0) {
+            // Ilk kez dirty yapilmissa zamani kaydet (dirty==1 → 2)
+            // current_time==0 ile cakismayi onlemek icin sentinel yerine
+            // ucuncu dirty durumu kullaniyoruz.
+            if (param->dirty == 1) {
                 param->last_change_time = current_time;
+                param->dirty = 2;
             }
-            
+
             // En eski degisiklik zamanini bul
             if (param->last_change_time < oldest_change_time) {
                 oldest_change_time = param->last_change_time;
@@ -333,6 +339,7 @@ static flash_result_t saveCategoryMultiSector(param_category_t category)
         header.write_count = mgr.write_counts[category];
         header.next_sector = (sector < sectors_needed - 1) ?
                             (start_sector + sector + 1) : FLASH_NEXT_SECTOR_NONE;
+        header.layout_id = computeLayoutSignature(category);
 
         // Bu sektore yazilacak veri miktari
         uint32_t chunk_size = (total_data_size - data_written > SECTOR_DATA_SIZE) ?
@@ -451,6 +458,11 @@ static flash_result_t loadCategoryMultiSector(param_category_t category)
                 load_res = FLASH_ERROR_READ; break;
             }
             if (header.magic != getMagicNumber(category)) {
+                load_res = FLASH_ERROR_CORRUPT; break;
+            }
+            if (header.layout_id != computeLayoutSignature(category)) {
+                /* Sema uyusmuyor (parametre eklendi/silindi/sirasi degisti) →
+                   stale veriyi RAM'e kopyalama, bu set'i bozuk say */
                 load_res = FLASH_ERROR_CORRUPT; break;
             }
             if (data_read + header.data_size > MAX_CATEGORY_DATA_SIZE) {
@@ -661,7 +673,7 @@ uint32_t flashManagerGetWriteCount(param_category_t category)
 uint8_t flashManagerIsDirty(uint32_t param_id)
 {
     param_descriptor_t *param = findParam(param_id);
-    return param ? param->dirty : 0;
+    return (param && param->dirty) ? 1 : 0;
 }
 
 /**
@@ -820,6 +832,45 @@ static uint32_t calcCRC32(const uint8_t *data, uint32_t len)
         }
     }
     return ~crc;
+}
+
+/**
+ * @brief Kategori parametre semasinin imzasini hesapla
+ *
+ * Parametreleri kayit sirasiyla dolasip her birinin id ve size alanlarini
+ * CRC32'ye besler. Parametre eklenir/silinir/sirasi degisir/size degisirse
+ * imza degisir; load sirasinda eski veri reddedilir (sessiz bozulma onlenir).
+ */
+static uint32_t computeLayoutSignature(param_category_t category)
+{
+    uint32_t crc = 0xFFFFFFFF;
+    for (uint8_t i = 0; i < mgr.param_count; i++) {
+        if (mgr.params[i].category == category) {
+            uint32_t fields[2] = { mgr.params[i].id, mgr.params[i].size };
+            const uint8_t *p = (const uint8_t*)fields;
+            for (uint32_t k = 0; k < sizeof(fields); k++) {
+                crc ^= p[k];
+                for (uint8_t j = 0; j < 8; j++) {
+                    crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
+                }
+            }
+        }
+    }
+    return ~crc;
+}
+
+/**
+ * @brief Bir kategorinin gercek kullanilabilir kapasitesi (byte)
+ *
+ * Wear set basina dusen sektor sayisi x sektor basina veri boyutu.
+ */
+static uint32_t getCategoryCapacity(param_category_t category)
+{
+    const category_layout_t *layout = &flash_layout[category];
+    uint8_t max_sectors = (category == PARAM_CAT_DYNAMIC) ?
+                          (layout->sector_count / layout->wear_sets) :
+                          layout->sector_count;
+    return (uint32_t)max_sectors * SECTOR_DATA_SIZE;
 }
 
 /**
