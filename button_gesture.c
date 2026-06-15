@@ -34,6 +34,21 @@ button_event_t buttonGestureProcess(button_gesture_t *obj,
 
     obj->btn_stable = stable;
 
+    // Tekrar-basis zorunlulugu: buton birakilana kadar olaylari yut.
+    // Edge dedektorleri yukarida guncellendi (bayat edge patlamasin diye),
+    // burada sadece olay uretimini bastiriyoruz.
+    if (obj->ignore_until_release)
+    {
+        if (!stable)
+        {
+            obj->ignore_until_release = 0;   // birakildi → tekrar basisa hazir
+        }
+        else
+        {
+            return BTN_EVT_NONE;             // hala basili → yut
+        }
+    }
+
     if (rise)
     {
         if (!obj->window_active)
@@ -131,4 +146,12 @@ button_event_t buttonGestureProcess(button_gesture_t *obj,
     }
 
     return BTN_EVT_NONE;
+}
+
+void buttonGestureRequireRepress(button_gesture_t *obj)
+{
+    obj->ignore_until_release = 1;
+    obj->window_active        = 0;
+    obj->click_count          = 0;
+    obj->long_fired           = 0;
 }

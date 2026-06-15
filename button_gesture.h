@@ -43,6 +43,7 @@ typedef struct
     uint8_t  long_fired;
     uint32_t last_repeat;
     uint32_t long_started_at;     // LONG event'in tetiklendigi zaman (ramp basi)
+    uint8_t  ignore_until_release; // 1: buton birakilana kadar olaylari yut
 } button_gesture_t;
 
 /**
@@ -83,5 +84,17 @@ button_event_t buttonGestureProcess(button_gesture_t *obj,
                                     uint8_t raw_pressed,
                                     uint32_t now,
                                     uint32_t *click_count_out);
+
+/**
+ * @brief Mevcut basisi gecersiz kil; yeni olay icin buton birakilip tekrar
+ *        basilmasini zorunlu kil.
+ *
+ * Timing konfigurasyonunu (debounce, long, multi-click, repeat) KORUR; yalniz
+ * bekleyen click penceresini ve long durumunu temizler ve bir sonraki
+ * birakmaya kadar tum olaylari yutar. Bir ekran uzun basisla kapanip baska bir
+ * ekrana gecildiginde, ayni basili butonun yeni ekranda istem disi olay
+ * uretmesini onler.
+ */
+void buttonGestureRequireRepress(button_gesture_t *obj);
 
 #endif /* BUTTON_GESTURE_H */
