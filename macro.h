@@ -9,8 +9,6 @@
  
  #include "stdint.h"
  
-#define MOVE(en, out, in)		((en) ? ((out) = (in)): 0)
-
 #define SET_BIT(reg, bit)	((reg) |= (bit))
 #define RESET_BIT(reg, bit)	((reg) &= ~(bit))
 
@@ -24,6 +22,14 @@
 #define CLEAR_STRUCT(s)	memset(&s, 0, sizeof(s))
 	
 #define arr_end(a) a + sizeof(a)/sizeof(*a)
+	
+#define DEBUG_ALL
+
+#ifdef  DEBUG_ALL
+    #define PRINT(fmt, ...) printf(fmt, __VA_ARGS__)
+#else
+    #define PRINT(fmt, ...)
+#endif
 	
 static inline uint8_t signum(int32_t x)
 {
