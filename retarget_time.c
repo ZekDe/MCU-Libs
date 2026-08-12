@@ -1,4 +1,8 @@
-#include "SW2023.h"
+/**
+* @Author: Emrah Duatepe
+*/
+
+#include "M254SE3AE.h"
 #include "time.h"
 
 time_t time(time_t *t)
@@ -14,7 +18,7 @@ time_t time(time_t *t)
     tm_time.tm_min  = rtc.u32Minute;
     tm_time.tm_sec  = rtc.u32Second;
 	tm_time.tm_wday = rtc.u32DayOfWeek;
-	tm_time.tm_isdst = -1;  // yaz saati bilinmiyor
+	tm_time.tm_isdst = 0;  // yaz saati yok,sadece metadata var,islevsiz
 
     time_t now = mktime(&tm_time);  // epoch’a çevir
 	

@@ -27,7 +27,22 @@ button_event_t buttonGestureProcess(button_gesture_t *obj,
                                     uint32_t now,
                                     uint32_t *click_count_out)
 {
-    uint8_t stable     = TON(&obj->ton_debounce, raw_pressed, now, obj->debounce_ms);
+    /* Simetrik debounce: 'stable', raw HEM basiste HEM birakista debounce_ms
+       boyunca kararli olmadikca degismez. Boylece birakma/orta parazitleri de
+       filtrelenir (eski TON on-delay idi: basisi debounce ediyor ama birakisi
+       aninda geciriyordu). ton_debounce alanlari yeniden kullaniliyor:
+       .aux = son gorulen raw seviyesi, .since = son seviye degisimi ani. */
+    uint8_t stable;
+    if (raw_pressed != obj->ton_debounce.aux)
+    {
+        obj->ton_debounce.aux   = raw_pressed;   // seviye degisti -> sayaci sifirla
+        obj->ton_debounce.since = now;
+    }
+    if ((uint32_t)(now - obj->ton_debounce.since) >= obj->debounce_ms)
+        stable = raw_pressed;                    // yeterince kararli -> kabul et
+    else
+        stable = obj->btn_stable;                // henuz kararli degil -> eski degeri koru
+
     uint8_t long_level = TON(&obj->ton_long,     stable,      now, obj->long_press_ms);
     uint8_t rise       = edgeDetection(&obj->ed_rise, stable);
     uint8_t long_edge  = edgeDetection(&obj->ed_long, long_level);
@@ -109,10 +124,13 @@ button_event_t buttonGestureProcess(button_gesture_t *obj,
         }
     }
 
-    // Buton birakildiginda long state'ini sifirla
+    // Buton birakildiginda long state'ini sifirla ve BIRAKIS olayini uret.
+    // (long_edge'de window_active=0/click_count=0 yapildigi icin ayni tick'te
+    //  multi-click/single blogu firmaz; guvenle donebiliriz.)
     if (obj->long_fired && !stable)
     {
         obj->long_fired = 0;
+        return BTN_EVT_LONG_RELEASED;
     }
 
     if (obj->window_active
@@ -154,4 +172,26 @@ void buttonGestureRequireRepress(button_gesture_t *obj)
     obj->window_active        = 0;
     obj->click_count          = 0;
     obj->long_fired           = 0;
+}
+
+void buttonGestureReset(button_gesture_t *obj)
+{
+    // Timing konfigurasyonunu koru, tum runtime state'i sifirla.
+    // Uyku sonrasi kullanilir: buton birakisi uyku/spin-wait icinde gozlemlenmedigi
+    // icin nesne "hala basili / long tetiklendi" state'inde kalir; sifirlamazsak
+    // uyandiran basis taze bir rising edge uretmez ve hicbir olay firar.
+    obj->ton_debounce.since   = 0;
+    obj->ton_debounce.aux     = 0;
+    obj->ton_long.since       = 0;
+    obj->ton_long.aux         = 0;
+    obj->ed_rise.aux          = 0;
+    obj->ed_long.aux          = 0;
+    obj->btn_stable           = 0;
+    obj->click_count          = 0;
+    obj->window_start         = 0;
+    obj->window_active        = 0;
+    obj->long_fired           = 0;
+    obj->last_repeat          = 0;
+    obj->long_started_at      = 0;
+    obj->ignore_until_release = 0;
 }

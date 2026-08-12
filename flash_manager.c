@@ -4,14 +4,16 @@
 #include "flash_manager.h"
 #include "NuMicro.h"
 #include <string.h>
+#ifdef DEBUG_FLASH_MANAGER
 #include <stdio.h>
+#endif
 
 
-// Magic number'lar, bu degerler degistirildiginde flash'a hi� yazmamis gibi davranir ve 0'dan baslar.
-// fakat ger�ekten silme ihtiyaci olursa erase fonksiyonu kullanilabilir
-#define FLASH_MAGIC_STATIC      0x53544153  // "STAT"
-#define FLASH_MAGIC_DYNAMIC     0x44594E43  // "DYNA"  
-#define FLASH_MAGIC_SYSTEM      0x53595353  // "SYST"
+// Magic number'lar, bu degerler degistirildiginde flash'a hiç yazmamis gibi davranir ve 0'dan baslar.
+// fakat gercekten silme ihtiyaci olursa erase fonksiyonu kullanilabilir
+#define FLASH_MAGIC_STATIC      0x53544150  // "STAT"
+#define FLASH_MAGIC_DYNAMIC     0x44594E40 // "DYNA"  
+#define FLASH_MAGIC_SYSTEM      0x53595350  // "SYST"
 
 //#define DEBUG_FLASH_MANAGER
 
@@ -32,13 +34,13 @@ typedef struct {
     // 4-byte hizali blok - pointer'lar ve callback'ler
     flash_error_callback_t error_callback;      // 4 bytes (function pointer)
     
-    // 4-byte hizali arrays - en b�y�k elemanlar
+    // 4-byte hizali arrays - en buyuk elemanlar
     uint32_t write_counts[PARAM_CAT_COUNT];     // 12 bytes (3 x 4)
     uint32_t sequence_numbers[PARAM_CAT_COUNT]; // 12 bytes (3 x 4)
     param_descriptor_t params[MAX_PARAMS];       // 32 x sizeof(param_descriptor_t)
     flash_config_t config;                       // sizeof(flash_config_t)
     
-    // B�y�k buffer - 4-byte hizali tutmak i�in buraya
+    // Buyuk buffer - 4-byte hizali tutmak i�in buraya
     uint8_t work_buffer[MAX_CATEGORY_DATA_SIZE]; // 1024 bytes
     
     uint8_t current_wear_set[PARAM_CAT_COUNT];  // 3 bytes
@@ -52,8 +54,6 @@ typedef struct {
 
 static flash_manager_t mgr = {0};
 
-// FLASH_USER_BASE artik runtime'da FMC_ReadDataFlashBaseAddr() ile alinir.
-// CONFIG1 (DFBA) main init sirasinda 0x7000 olarak ayarlanmis olmalidir.
 static uint32_t flash_user_base = 0;
 
 // I� fonksiyon prototipleri
@@ -75,8 +75,8 @@ static flash_result_t verifyWrite(uint32_t addr, const void *data, uint32_t size
 // platform depended
 static uint32_t getFlashBaseAddress(void)
 {
-	//return FLASH_USER_BASE;
-	return FMC_ReadDataFlashBaseAddr();
+	return FLASH_USER_BASE;
+	//return FMC_ReadDataFlashBaseAddr();
 }
 /**
  * @brief Flash Manager'i baslatir
@@ -105,9 +105,9 @@ flash_result_t flashManagerInit(const flash_config_t *config)
     
     // FMC baslat ve data flash base adresini oku
     SYS_UnlockReg();
-    FMC_Open();
+    //FMC_Open();
     flash_user_base = getFlashBaseAddress();
-    FMC_Close();
+    //FMC_Close();
     SYS_LockReg();
 
     // CONFIG1 ayarsiz veya layout sigmiyorsa hata
@@ -136,7 +136,7 @@ static flash_result_t initSequenceNumbers(void)
         uint32_t max_write_count = 0;
         uint8_t best_wear_set = 0;
         
-        // T�m wear set'leri kontrol et
+        // Tum wear set'leri kontrol et
         for (uint8_t ws = 0; ws < layout->wear_sets; ws++) {
             uint8_t sector = getCategoryStartSector(category, ws);
             uint32_t addr = getAbsoluteSectorAddress(sector);
@@ -272,12 +272,12 @@ static flash_result_t saveCategoryMultiSector(param_category_t category)
         return FLASH_OK; // Bu kategoride parametre yok
     }
     
-    // Buffer siniri kontrol�
+    // Buffer siniri kontrolu
     if (total_data_size > MAX_CATEGORY_DATA_SIZE) {
         return FLASH_ERROR_NO_SPACE;
     }
     
-    // 2. Ka� sekt�r gerekli?
+    // 2. Kac sektor gerekli?
     uint32_t sectors_needed = 0;
     uint32_t remaining = total_data_size;
     while (remaining > 0) {
@@ -295,7 +295,7 @@ static flash_result_t saveCategoryMultiSector(param_category_t category)
         return FLASH_ERROR_NO_SPACE;
     }
     
-    // 3. Wear set se�imi
+    // 3. Wear set secimi
     uint8_t wear_set = mgr.current_wear_set[category];
     if (category == PARAM_CAT_DYNAMIC) {
         wear_set = (wear_set + 1) % layout->wear_sets;

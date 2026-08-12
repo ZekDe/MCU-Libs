@@ -1,3 +1,6 @@
+/**
+* @Author: Emrah Duatepe
+*/
 #include "weekly_schedule.h"
 #include <string.h>
 #include <stdio.h>
@@ -129,7 +132,7 @@ uint16_t weeklyScheduleGetHour(uint8_t hour_index)
 }
 
 /**
- * @brief Mevcut saatin programını işler, periodik call
+ * @brief Mevcut saatin programını işler
  */
 void weeklyScheduleProcessCurrentHour(void)
 {
@@ -193,6 +196,16 @@ void weeklyScheduleSetDay(uint8_t day, uint16_t value)
         uint8_t index = weeklyScheduleDayHourToIndex(day, hour);
         weeklyScheduleSetHour(index, value);
     }
+}
+
+uint8_t isWeeklyScheduleEmpty(void)
+{
+    for(uint16_t i = 0; i < HOURS_IN_WEEK; i++)
+    {
+        if(g_weekly_schedule.schedule_hours[i] != 0)
+            return 0;
+    }
+    return 1;
 }
 
 /**

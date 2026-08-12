@@ -11,12 +11,19 @@
 *   Sector 6-7: SYSTEM                (DFBA + 0xC00 .. DFBA + 0xFFF)
 * Toplam 4 KB kullanici alani. DYNAMIC icin 1 KB - 1 KB dongusel wear leveling.
 * FLASH_USER_BASE runtime'da FMC_ReadDataFlashBaseAddr() ile alinir.
+
+M24SE3AE için ->
+Sector 0-1: STATIC (0x1F000-0x1F3FF)
+Sector 2-3: DYNAMIC wear_set=0 (0x1F400-0x1F7FF)
+Sector 4-5: DYNAMIC wear_set=1 (0x1F800-0x1FBFF)
+Sector 6-7: SYSTEM (0x1FC00-0x1FFFF)
+Toplam 4 Kb yazma alani vardir. DYNAMIC için 1 kb - 1kb döngüsel
 */
 // Flash fiziksel ozellikleri
-#define FLASH_USER_BASE			0x0000
-#define FLASH_END_ADDR          0x8000     // 32KB son adres (M031LC2AE)
-#define FLASH_SECTOR_SIZE       0x200      // 512 bytes per sector (M031 page size)
+#define FLASH_END_ADDR          0x20000    // 128KB son adres
+#define FLASH_SECTOR_SIZE       0x200      // 512 bytes per sector
 #define FLASH_USER_SIZE         0x1000     // 4KB toplam alan
+#define FLASH_USER_BASE          (FLASH_END_ADDR - FLASH_USER_SIZE)
 
 // Maksimum desteklenen veri boyutu (2 sekt�r)
 #define MAX_CATEGORY_DATA_SIZE  0x400      // 1024 bytes

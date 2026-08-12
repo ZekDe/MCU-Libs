@@ -1,6 +1,6 @@
 /**
  * @file    menu_manager.c
- * @brief   Sayfa tabanli menu yoneticisi implementasyonu.
+ * @brief   Sayfa tabanli menu yoneticisi.
  */
 #include "menu_manager.h"
 
@@ -17,7 +17,7 @@ static void stackPush(const menu_page_t *p)
         stack[stack_size++] = p;
     }
     // Stack tasarsa en eski entry'yi atip kaydirma yapilabilir; simdilik
-    // sessizce dustur. MENU_STACK_DEPTH'i artir gerekirse.
+    // sessizce dusur. MENU_STACK_DEPTH'i artir gerekirse.
 }
 
 static const menu_page_t *stackPop(void)
@@ -68,7 +68,8 @@ void menuFeedButton(uint8_t btn_id, button_event_t evt)
 void menuProcess(uint32_t now)
 {
     // Bekleyen sayfa gecisi varsa uygula
-    if (next_page != current_page) {
+    if (next_page != current_page) 
+	{
         if (current_page && current_page->onExit) {
             current_page->onExit();
         }

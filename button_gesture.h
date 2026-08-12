@@ -19,7 +19,8 @@ typedef enum
     BTN_EVT_SINGLE      = 1,
     BTN_EVT_MULTI       = 2,
     BTN_EVT_LONG        = 3,
-    BTN_EVT_LONG_REPEAT = 4
+    BTN_EVT_LONG_REPEAT = 4,
+    BTN_EVT_LONG_RELEASED = 5   /* LONG (veya LONG_REPEAT) sonrasi buton BIRAKILINCA bir kez firlar */
 } button_event_t;
 
 typedef struct
@@ -96,5 +97,16 @@ button_event_t buttonGestureProcess(button_gesture_t *obj,
  * uretmesini onler.
  */
 void buttonGestureRequireRepress(button_gesture_t *obj);
+
+/**
+ * @brief Tum runtime state'i sifirla (timing konfigurasyonu korunur).
+ *
+ * Uyku sonrasi uyanista kullanilir: buton birakisi uyku/spin-wait icinde
+ * gozlemlenmedigi icin nesne bayat "hala basili / long tetiklendi" state'inde
+ * kalir. Sifirlanmazsa uyandiran basis taze bir rising/long edge uretmez ve
+ * hicbir olay firar. Sifirlandiktan sonra basili buton temiz bir yeni basis
+ * olarak algilanir.
+ */
+void buttonGestureReset(button_gesture_t *obj);
 
 #endif /* BUTTON_GESTURE_H */

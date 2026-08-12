@@ -11,14 +11,16 @@ typedef enum {
 	SCHEDULE_MODE_NONE = 0,
     SCHEDULE_MODE_ONOFF = 1,    // Mode 1: 0/1 (kapalı/açık)
     SCHEDULE_MODE_LEVEL,        // Mode 2: 0-3 seviye kontrolü
-    SCHEDULE_MODE_TEMP          // Mode 3: Sıcaklık değeri
+    SCHEDULE_MODE_TEMP,         // Mode 3: Sıcaklık değeri
+	SCHEDULE_MODE_END,
 } schedule_mode_t;
 
 // Haftalık program yapısı
-typedef struct {
+typedef struct 
+{
+	schedule_mode_t current_mode;            // Aktif mod
     uint16_t schedule_hours[HOURS_IN_WEEK];  // 168 saatlik dizi
-    schedule_mode_t current_mode;            // Aktif mod
-    uint8_t is_active;                       // Program aktif mi?
+    uint32_t is_active;                       // Program aktif mi?
 } weekly_schedule_t;
 
 // Global haftalık program
@@ -39,6 +41,7 @@ uint8_t weeklyScheduleDayHourToIndex(uint8_t day, uint8_t hour);
 void weeklyScheduleIndexToDayHour(uint8_t index, uint8_t *day, uint8_t *hour);
 void weeklyScheduleClearAll(void);
 void weeklyScheduleSetDay(uint8_t day, uint16_t value);
+uint8_t isWeeklyScheduleEmpty(void);
 
 // Debug fonksiyonları
 void weeklySchedulePrintWeek(void);

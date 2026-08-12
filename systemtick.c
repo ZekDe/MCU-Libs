@@ -1,7 +1,6 @@
 #include "systemtick.h"
 #include "NuMicro.h"
-#include "display7seg.h"
-
+#include "active_buzzer_nonblocking.h"
 volatile uint32_t systick;
 
 void SysTick_Init(void) 
@@ -14,16 +13,8 @@ void SysTick_Init(void)
 
 void SysTick_Handler(void)
 {
-	static uint32_t time_divisor;
 	++systick;
-	++time_divisor;
-	
-	if(time_divisor == 3)
-	{
-		time_divisor = 0;
-		displayScan();
-	}
-	
+	buzzerUpdate(systick);
 }
 
 void delayms(uint32_t ms)
