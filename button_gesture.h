@@ -5,14 +5,6 @@
 #include "ton.h"
 #include "edge_detection.h"
 
-#define CONTROLLER_PERIOD           1000//2500
-#define DEADBAND_MM  				0.042f   /* 1 full-step */
-
-#define BTN_DEBOUNCE_MS           50U
-#define BTN_LONG_PRESS_MS         3000U
-#define BTN_MULTI_CLICK_WINDOW_MS 600U
-#define LEVEL_MAX                 2U
-
 typedef enum
 {
     BTN_EVT_NONE        = 0,
@@ -20,7 +12,8 @@ typedef enum
     BTN_EVT_MULTI       = 2,
     BTN_EVT_LONG        = 3,
     BTN_EVT_LONG_REPEAT = 4,
-    BTN_EVT_LONG_RELEASED = 5   /* LONG (veya LONG_REPEAT) sonrasi buton BIRAKILINCA bir kez firlar */
+    BTN_EVT_LONG_RELEASED = 5,  /* LONG (veya LONG_REPEAT) sonrasi buton BIRAKILINCA bir kez firlar */
+    BTN_EVT_PRESSED       = 6   /* Debounce edilmis basma kenarinda bir kez firlar */
 } button_event_t;
 
 typedef struct
@@ -77,6 +70,9 @@ void buttonGestureInit(button_gesture_t *obj,
  * @param click_count_out  optional, filled with the click count that produced
  *                         the returned SINGLE/MULTI event (NULL to ignore)
  * @return event fired on this tick, or BTN_EVT_NONE
+ *
+ * A PRESSED event fires once when a new press passes debounce. The same press
+ * can later produce SINGLE/MULTI or LONG according to the configured timings.
  *
  * A LONG event fires once at the long-press threshold; any pending click
  * window is cancelled so no spurious SINGLE fires on release.

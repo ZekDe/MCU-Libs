@@ -1,6 +1,6 @@
 /**
  * @file    button_gesture.c
- * @brief   Single / multi click and long-press detector for a single button.
+ * @brief   Debounced press, click and long-press detector for a single button.
  * @author  Emrah Duatepe
  */
 
@@ -77,6 +77,8 @@ button_event_t buttonGestureProcess(button_gesture_t *obj,
         {
             obj->click_count++;
         }
+
+        return BTN_EVT_PRESSED;
     }
 
     if (long_edge)
